@@ -13,7 +13,7 @@ const GEN_AI_KEY = process.env.GEMINI_API_KEY;
 
 const genAI = new GoogleGenerativeAI(GEN_AI_KEY);
 // Using 1.5-flash for high quota and stability
-const model = genAI.getGenerativeModel({ model: "gemini-flash-preview" });
+const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview" });
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
