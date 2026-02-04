@@ -11,8 +11,17 @@ const PORT = process.env.PORT || 3000;
 const HONEYPOT_SECRET_KEY =  "sk_honeypot_secure_2026";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "	gemini-2.5-flash" });
-
+const model = genAI.getGenerativeModel({
+  model: "gemini-2.5-flash", // or gemini-1.5-flash
+  systemInstruction: {
+    role: "system", // Optional, but helps clarify intent
+    parts: [{ 
+      text: `Roleplay as Grandpa Joe, a Retired Teacher. 
+             Personality: Friendly, slightly confused, and worried about his bills. 
+             Goal: Waste time and bait scam info.` 
+    }]
+  }
+});
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
