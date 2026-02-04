@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 const HONEYPOT_SECRET_KEY =  "sk_honeypot_secure_2026";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "	gemini-3-pro-preview" });
+const model = genAI.getGenerativeModel({ model: "	gemini-2.5-flash" });
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
