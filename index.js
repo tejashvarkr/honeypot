@@ -563,6 +563,4 @@ app.get('/health', (req, res) => res.status(200).json({ status: "OK" }));
 
 app.listen(PORT, () => console.log(`🚀 Honeypot Engine running on port ${PORT}`));
 
-app.get('/health', (req, res) => res.status(200).json({ status: "OK" }));
 
-app.listen(PORT, () => console.log(`🚀 Honeypot Engine running on port ${PORT}`));
