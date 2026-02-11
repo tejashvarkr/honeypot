@@ -338,6 +338,7 @@
 // // app.get('/health', (req, res) => res.status(200).json({ status: "OK" }));
 
 // // app.listen(PORT, () => console.log(`🚀 Honeypot Running on Port ${PORT}`));
+
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
@@ -427,10 +428,8 @@ const authenticateRequest = (req, res, next) => {
 
 /**
  * MAIN INTERACTION ENDPOINT
- * Updated to support the specific payload structure provided.
  */
 app.post('/api/honeypot/interact', authenticateRequest, async (req, res) => {
-  // Destructuring based on your specific JSON example
   const { sessionId, message, conversationHistory = [], metadata = {}, persona = {} } = req.body;
 
   try {
@@ -452,17 +451,18 @@ app.post('/api/honeypot/interact', authenticateRequest, async (req, res) => {
     const session = globalState[sessionId];
     session.count += 1;
 
-    // 2. Persona Defaults (if not provided in payload)
+    // 2. Persona Defaults
     const targetRole = persona.role || "worried bank customer";
-    const targetPersonality = persona.personality || "anxious, polite, and easily confused";
-    const targetVulnerability = persona.vulnerability || "fear of losing access to savings";
+    const targetPersonality = persona.personality || "anxious and polite";
+    const targetVulnerability = persona.vulnerability || "fear of losing savings";
 
-    // 3. System Prompt
+    // 3. System Prompt - Optimized to prevent runaway text generation
     const systemPrompt = `
       Roleplay as a ${targetRole}. 
       Personality: ${targetPersonality}. 
       Vulnerability: ${targetVulnerability}.
       Goal: Waste the scammer's time, act gullible, and lure them into revealing UPI IDs, links, or phone numbers.
+      IMPORTANT: Keep your reply concise (under 2 sentences).
       
       You must return a JSON object:
       {
@@ -484,6 +484,8 @@ app.post('/api/honeypot/interact', authenticateRequest, async (req, res) => {
       systemInstruction: { parts: [{ text: systemPrompt }] },
       generationConfig: {
         responseMimeType: "application/json",
+        // Max tokens set to prevent "Unterminated string" by capping total length
+        maxOutputTokens: 2000, 
         responseSchema: {
           type: "OBJECT",
           properties: {
@@ -512,17 +514,29 @@ app.post('/api/honeypot/interact', authenticateRequest, async (req, res) => {
       }
     );
 
-    const resultText = aiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
+    let resultText = aiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!resultText) throw new Error("Empty AI response");
 
-    const result = JSON.parse(resultText);
+    // Robust JSON Parsing
+    let result;
+    try {
+        result = JSON.parse(resultText);
+    } catch (parseError) {
+        console.error("Initial JSON Parse failed, attempting cleanup...");
+        // Fallback: If model returned raw text with JSON markdown or was slightly truncated
+        const cleanedText = resultText.replace(/```json|```/g, "").trim();
+        result = JSON.parse(cleanedText);
+    }
+
     const regexIntel = extractWithRegex(message.text);
 
     // 5. Merge Data
-    ['bankAccounts', 'upiIds', 'phishingLinks', 'phoneNumbers'].forEach(key => {
-      const combined = [...(result.extracted?.[key] || []), ...(regexIntel[key] || [])];
-      session.intel[key].push(...combined);
-    });
+    if (result.extracted) {
+        ['bankAccounts', 'upiIds', 'phishingLinks', 'phoneNumbers'].forEach(key => {
+            const combined = [...(result.extracted[key] || []), ...(regexIntel[key] || [])];
+            session.intel[key].push(...combined);
+        });
+    }
 
     // 6. Async Background Reporting
     const foundNew = Object.values(regexIntel).some(arr => arr.length > 0);
@@ -535,13 +549,19 @@ app.post('/api/honeypot/interact', authenticateRequest, async (req, res) => {
       );
     }
 
-    res.json({ status: "success", reply: result.reply });
+    res.json({ status: "success", reply: result.reply || "I'm not sure I understand, what should I do?" });
 
   } catch (err) {
     console.error("SERVER ERROR:", err);
-    res.status(500).json({ status: "error", message: "Internal Engine Error" });
+    // Specific error message for JSON issues to help debugging
+    const msg = err instanceof SyntaxError ? "Response format error" : "Internal Engine Error";
+    res.status(500).json({ status: "error", message: msg });
   }
 });
+
+app.get('/health', (req, res) => res.status(200).json({ status: "OK" }));
+
+app.listen(PORT, () => console.log(`🚀 Honeypot Engine running on port ${PORT}`));
 
 app.get('/health', (req, res) => res.status(200).json({ status: "OK" }));
 
