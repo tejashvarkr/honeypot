@@ -571,7 +571,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // API Configuration
-const apiKey = ""; // Set to empty as per environment requirements
+const apiKey = process.env.GEMINI_API_KEY; // Set to empty as per environment requirements
 const HONEYPOT_SECRET_KEY = process.env.HONEYPOT_SECRET_KEY || "sk_honeypot_secure_2026";
 const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
 
